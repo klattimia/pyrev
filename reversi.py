@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """UI for Reversi."""
 
 
