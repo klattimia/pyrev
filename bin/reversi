@@ -38,7 +38,7 @@ class rev_ui(rev_core):
                 else:
                     print(" ", end=" | ")
             print("\n" + "-" * 38)
-        print(self.turn, (hex(self.black), hex(self.white)))
+        print(self.turn, hex(self.black), hex(self.white))
 
     def show_stone(self):
         """Show the number of stones."""
@@ -87,6 +87,7 @@ class rev_ui(rev_core):
             if not self.judge:
                 return True
             else:
+                self.add_0()
                 self.caution_pass()
                 return False
         else:

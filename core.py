@@ -35,6 +35,16 @@ class rev_core(rev_branch):
         self.rev.append(
             self.reversed(self.turn, self.black, self.white, site))
 
+    def add_0(self):
+        """
+        Fix behavior of undo which follows after pass.
+
+        This is called When the turn is passed
+        without this func, undo would behave incorrectly
+        """
+        self.put.append(0)
+        self.rev.append(0)
+
     def insert_judge(self):
         """Inseert legal board to self.judge."""
         self.judge = self.legal(self.turn, self.black, self.white)
@@ -106,6 +116,9 @@ class rev_core(rev_branch):
             self.insert_judge()
             if not self.judge:
                 return True
+            else:
+                self.add_0()
+                return False
         else:
             return False
 
