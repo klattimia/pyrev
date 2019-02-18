@@ -54,7 +54,7 @@ class rev_ui(rev_core):
             winner = "Black" if nb > nw else "White"
             print("Game Over\t{} Won".format(winner))
 
-    def input_player(self):
+    def input_player(self, args):
         """Player input site."""
         while True:
             raw_site = input('ij:(row, col) = (i, j), 0:undo  >>> ')
@@ -115,4 +115,4 @@ class rev_ui(rev_core):
 
 if __name__ == '__main__':
     game = rev_ui()
-    game.game_flow(game.input_player, game.input_random, None, None)
+    game.game_flow_cui(game.input_player, game.input_random, None, None)
