@@ -1,132 +1,10 @@
-"""Reversi implementation."""
+"""Core of Reversi implementation."""
+import numpy as np
+import random
+from pyrev.klattimAI import rev_branch
 
 
-class _rev_func:
-    """
-    Class _rev_func.
-
-    useful funcion for class rev_core
-    """
-
-    def swap(self, turn, black, white):
-        """Swap (black, white) to (player, opponent)."""
-        if not turn:
-            return black, white
-        else:
-            return white, black
-
-    def swap_turn(self, turn):
-        """Swap turn."""
-        return 1 ^ turn
-
-    def _legal_l(self, player, masked, blank, dir):
-        """Direction << dir exploring."""
-        tmp = masked & (player << dir)
-        tmp |= masked & (tmp << dir)
-        tmp |= masked & (tmp << dir)
-        tmp |= masked & (tmp << dir)
-        tmp |= masked & (tmp << dir)
-        tmp |= masked & (tmp << dir)
-        legal = blank & (tmp << dir)
-        return legal
-
-    def _legal_r(self, player, masked, blank, dir):
-        """Direction >> dir exploring."""
-        tmp = masked & (player >> dir)
-        tmp |= masked & (tmp >> dir)
-        tmp |= masked & (tmp >> dir)
-        tmp |= masked & (tmp >> dir)
-        tmp |= masked & (tmp >> dir)
-        tmp |= masked & (tmp >> dir)
-        legal = blank & (tmp >> dir)
-        return legal
-
-    def _reversed_l(self, player, blank_masked, site, dir):
-        """Direction << for self.reversed()."""
-        rev = 0
-        tmp = ~(player | blank_masked) & (site << dir)
-        if tmp:
-            for i in range(6):
-                tmp <<= dir
-                if tmp & blank_masked:
-                    break
-                elif tmp & player:
-                    rev |= tmp >> dir
-                    break
-                else:
-                    tmp |= tmp >> dir
-        return rev
-
-    def _reversed_r(self, player, blank_masked, site, dir):
-        """Direction >> for self.reversed()."""
-        rev = 0
-        tmp = ~(player | blank_masked) & (site >> dir)
-        if tmp:
-            for i in range(6):
-                tmp >>= dir
-                if tmp & blank_masked:
-                    break
-                elif tmp & player:
-                    rev |= tmp << dir
-                    break
-                else:
-                    tmp |= tmp << dir
-        return rev
-
-    def legal(self, turn, black, white):
-        """Generate legal board."""
-        player, opponent = self.swap(turn, black, white)
-        blank = ~(black | white)
-        h = opponent & 0x7e7e7e7e7e7e7e7e
-        v = opponent & 0x00ffffffffffff00
-        a = opponent & 0x007e7e7e7e7e7e00
-        legal = self._legal_l(player, h, blank, 1)
-        legal |= self._legal_l(player, v, blank, 8)
-        legal |= self._legal_l(player, a, blank, 7)
-        legal |= self._legal_l(player, a, blank, 9)
-        legal |= self._legal_r(player, h, blank, 1)
-        legal |= self._legal_r(player, v, blank, 8)
-        legal |= self._legal_r(player, a, blank, 7)
-        legal |= self._legal_r(player, a, blank, 9)
-        return legal
-
-    def reversed(self, turn, black, white, site):
-        """Return reversed site board."""
-        player, opponent = self.swap(turn, black, white)
-        blank_h = ~(player | opponent & 0x7e7e7e7e7e7e7e7e)
-        blank_v = ~(player | opponent & 0x00ffffffffffff00)
-        blank_a = ~(player | opponent & 0x007e7e7e7e7e7e00)
-        rev = self._reversed_l(player, blank_h, site, 1)
-        rev |= self._reversed_l(player, blank_v, site, 8)
-        rev |= self._reversed_l(player, blank_a, site, 7)
-        rev |= self._reversed_l(player, blank_a, site, 9)
-        rev |= self._reversed_r(player, blank_h, site, 1)
-        rev |= self._reversed_r(player, blank_v, site, 8)
-        rev |= self._reversed_r(player, blank_a, site, 7)
-        rev |= self._reversed_r(player, blank_a, site, 9)
-        return rev
-
-    def reverse(self, turn, black, white, site, rev):
-        """Reverse board."""
-        if not turn:
-            return black ^ (rev ^ site), white ^ rev
-        else:
-            return black ^ rev, white ^ (rev ^ site)
-
-    def count_stone(self, black, white):
-        """Count stone."""
-        nb = 0
-        nw = 0
-        while black:
-            black &= black - 1
-            nb += 1
-        while white:
-            white &= white - 1
-            nw += 1
-        return nb, nw
-
-
-class rev_core(_rev_func):
+class rev_core(rev_branch):
     """
     Class rev_core.
 
@@ -171,3 +49,77 @@ class rev_core(_rev_func):
     def count_board(self):
         """Count stone on self.black and self.white."""
         return self.count_stone(self.black, self.white)
+
+    def input_random(self, opt_args):
+        """Random input site."""
+        while True:
+            site = 1 << random.randrange(0, 64)
+            if self.judge & site:
+                self.add_site(site)
+                break
+
+    def input_random_w(self, w):
+        """Random generate under weight of w."""
+        w = np.array(w) / sum(w)
+        while True:
+            site = 1 << int(np.random.choice(range(64), p=w))
+            if self.judge & site:
+                self.add_site(site)
+                break
+
+    def input_decided_k(self, last_k=10, which_win=1):
+        """
+        Use decided flag.
+
+        args = (last_k, which_win)
+        """
+        def outer(func):
+            def inner(*args, **kwargs):
+                nb, nw = self.count_board()
+                if last_k + nb + nw > 64:
+                    turn, boards = \
+                        self.next_branch(self.turn, [(self.black, self.white)])
+                    for x in boards:
+                        if self.decided_k(2*last_k, which_win, turn, x):
+                            site = (x[0] ^ self.black) ^ (x[1] ^ self.white)
+                            self.add_site(site)
+                            break
+                        elif x == boards[-1]:
+                            func(*args, **kwargs)
+                else:
+                    func(*args, **kwargs)
+            return inner
+        return outer
+
+    def input(self, black_func, white_func, black_args, white_args):
+        """Decorate input function to sync with turn."""
+        if not self.turn:
+            black_func(black_args)
+        else:
+            white_func(white_args)
+
+    def jud_end(self):
+        """Judge whether end."""
+        self.insert_judge()
+        if not self.judge:
+            self.next_turn()
+            self.insert_judge()
+            if not self.judge:
+                return True
+        else:
+            return False
+
+    def game_flow_noprint(self, black_f, white_f, black_args, white_args):
+        """Game flow without print."""
+        count = [0, 0]
+        while True:
+            if self.jud_end():
+                nb, nw = self.count_board()
+                id = 0 if nb > nw else 1
+                count[id] += 1
+                print(count)
+                self.__init__()
+                continue
+            self.input(black_f, white_f, black_args, white_args)
+            self.next_board()
+            self.next_turn()

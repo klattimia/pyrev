@@ -2,7 +2,6 @@
 """UI for Reversi."""
 
 
-import random
 from pyrev.pycolor import pycolor
 from pyrev.core import rev_core
 
@@ -15,7 +14,7 @@ class rev_ui(rev_core):
 
     def __init__(self):
         """Define the first state."""
-        super().__init__(0, 0x0000001008000000, 0x0000000810000000)
+        super().__init__(0, 0x0000000810000000, 0x0000001008000000)
 
     def show_board(self):
         """Show the board for command line."""
@@ -39,7 +38,7 @@ class rev_ui(rev_core):
                 else:
                     print(" ", end=" | ")
             print("\n" + "-" * 38)
-        print(hex(self.black), hex(self.white))
+        print(self.turn, (hex(self.black), hex(self.white)))
 
     def show_stone(self):
         """Show the number of stones."""
@@ -79,21 +78,6 @@ class rev_ui(rev_core):
             else:
                 print("You cannot put there")
 
-    def input_random(self):
-        """Random input site."""
-        while True:
-            site = 1 << random.randrange(0, 64)
-            if self.judge & site:
-                self.add_site(site)
-                break
-
-    def input(self, black, white):
-        """Define input way of each side."""
-        if not self.turn:
-            black()
-        else:
-            white()
-
     def jud_end(self):
         """Judge whether end."""
         self.insert_judge()
@@ -112,7 +96,7 @@ class rev_ui(rev_core):
         """Caution to pass."""
         print("turn passed")
 
-    def game_flow(self):
+    def game_flow_cui(self, black_f, white_f, black_args, white_args):
         """Game flow of reversi."""
         while True:
             if self.jud_end():
@@ -124,11 +108,11 @@ class rev_ui(rev_core):
                 break
             self.show_board()
             self.show_stone()
-            self.input(self.input_player, self.input_random)
+            self.input(black_f, white_f, black_args, white_args)
             self.next_board()
             self.next_turn()
 
 
 if __name__ == '__main__':
     game = rev_ui()
-    game.game_flow()
+    game.game_flow(game.input_player, game.input_random, None, None)
